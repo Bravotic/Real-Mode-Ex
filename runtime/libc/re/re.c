@@ -40,7 +40,7 @@ int main(int argc, char* argv[]){
     draw_setup_text_surface(80, 25);
     #endif
     
-    rmx_execute(buf, 255);
+    rmx_execute(buf, 512);
     
     #ifdef _RMX_TEXTMODE_DEF
     draw_dispose_window();
