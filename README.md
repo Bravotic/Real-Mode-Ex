@@ -11,7 +11,13 @@ As computers continue to evolve, things must inevitably be left in the past.  Sa
 
 ## Building
 
-To build RMX, simply run GNU Make, `make`, in the root directory of the project.  Currently our project only targets raw libc and no other libraries.  A proof of concept ncurses UI is coming, however not actually implemented into the build yet.  This build has been tested and is working on both Windows and Linux, most other platforms with GNU utils should build it fine as well.
+### Building on Windows
+
+Download Msys2, a toolchain which closely emulates a \*nix build environment.  Make sure to setup gcc.  To install SDL2, type `pacman -Ss SDL2` and install the package that you need, either the i686 or x86_64 one.  After that simply typing `make` should result in a working build
+
+### Building on \*nix
+
+Download SDL2 from your package manager, what ever that may be.  Note, on a system like Debian or Ubuntu, make sure to download the development package for SDL2.  After doing that, running the make file with `make` should work.
 
 ## Supported Platforms:
 
@@ -33,4 +39,8 @@ RMX works by trying to emulate all facets of an early x86 processor.  This is a 
 ## How much of it is implemented?
 
 Not very much, roughly around 10%.  Development has mostly been slow due to a busy work schedule for me, as well as shortjumps taking a while to implement without problem.  The project is still under active development however, and always changing.
+
+## Notes on the dependency on SDL2
+
+Currently our window system depends on SDL2.  At the moment this is here mostly as a cross platform solution for graphics and text rendering, however is not preferable.  At this time, we are not ready to start developing native X11, Win32, or Cocoa window systems for RMX, so we will rely on a library which handles most of that for us, despite the fact it may be slower than an implementation we could write.
 

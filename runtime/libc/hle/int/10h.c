@@ -10,6 +10,9 @@ void hle_10h_handler(){
         case 0x02:
             draw_move_cur(dh, dl);
         return;
+        case 0x03:
+            get_cursor_pos();
+        return;
         case 0x0e:
             #ifdef _RMX_TEXTMODE_DEF
             draw_char(al);
@@ -17,6 +20,7 @@ void hle_10h_handler(){
             printf("%c", al);
             #endif
         return;
+        
         default:
             printf("Unknown AH value %x", ah);
         return;

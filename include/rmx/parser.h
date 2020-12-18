@@ -15,3 +15,5 @@
 #include <rmx_types.h>
 
 extern void rmx_parse_opcode(byte_t *ref, byte_t t);
+
+#define RMX_STOP_CODE (unsigned int)0 - 2

@@ -11,9 +11,9 @@ loop:
     int 10h
     jmp loop
     .done:
-        cmp dh, 25
+        cmp dh, 24
         je .donedone
-        mov dh, 25
+        mov dh, 24
         mov dl, 0
         mov ah, 2
         int 10h

@@ -31,7 +31,9 @@ void PSF_init(){
 
 }
 
+
 void PSF_putchar(unsigned short int c, int cx, int cy, COLOUR_TYPE fg, COLOUR_TYPE bg){
+    //printf("Printing: %x(%d, %d)\n", c, cx, cy);
     PSF_font* font = (PSF_font*)&_binary_adjunct_font_psf_start;
     int bytesperline = (font->width + 7) / 8;
 

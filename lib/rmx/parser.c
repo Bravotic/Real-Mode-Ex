@@ -35,17 +35,28 @@
 
 #include <stdio.h>
 
-void rmx_parse_opcode(unsigned char* ref, unsigned char term){
+#define RMX_STOP_CODE (unsigned int)0 - 2
 
     int cmpval = 0x0;
     int cmpreg = 0x0;
+
+unsigned int rmx_parse_opcode_single(unsigned char* ref, unsigned int i){
+
+
     unsigned int prev_ref[256] = {0};
 
     unsigned char inst_count = 0;
 
     //for(int i = 0;i < sizeof(ref); i++){
-    for(unsigned int i = 0; ref[i] != term; i++){
-        //printf("Loaded next opcode at %i (%x)\n", i, ref[i]);
+    //for(unsigned int i = 0; ref[i] != term; i++){
+     /*     printf("START LOOP: \n");
+    printf("AX: %04x\n", ax);
+    printf("BX: %04x\n", bx);
+    printf("CX: %04x\n", cx);
+    printf("DX: %04x\n\n", dx);
+    printf("SI: %04x\n", si);
+    printf("DI: %04x\n", di);*/
+        //printf("Loaded next opcode at %x (%x)\n", i, ref[i]);
         prev_ref[inst_count] = i;
         inst_count++;
         
@@ -59,11 +70,15 @@ void rmx_parse_opcode(unsigned char* ref, unsigned char term){
              *
              * TODO: make this function as intended
              ***/
-            case 0x0: return;
+            case 0x0: return RMX_STOP_CODE;
             
             //case 0xcb: return;
 
-            case 0xFF: return;
+            case 0xFF: return RMX_STOP_CODE;
+
+            case 0xc3:
+                return RMX_STOP_CODE;
+            break;
 
             case 0x3c:
                 i++;
@@ -71,29 +86,43 @@ void rmx_parse_opcode(unsigned char* ref, unsigned char term){
                 cmpreg = 1; // AL
             break;
 
-            case 0xbe:
-                i++;
-                byte_t seg = ref[i];
-                i++;
-                byte_t off = ref[i];
-                
-                si = seg;
-            break;
+            
 
             case 0x46:
-                si++;
+                //printf("SI Increment (%d to %d)\n", si, si+1);
+                si = (unsigned short int)si + 1;
+                //printf("SI Value to %x\n", ref[si]);
+            break;
+
+            case 0x47:
+                di = (unsigned short int)di + 1;
+                //printf("DI Value to %x\n", ref[di]);
             break;
 
             // Call
             case 0xe8:
                 
                 i++;
-                unsigned short int goback_ret = 0xFF - ref[i] + 1;
-                i++;
+                unsigned short int goback_ret;
+                if(ref[i] > 0xE0){
+                    //printf("Calling here\n");
+                    goback_ret = 0xFF - ref[i] + 1;
+                    i++;
+                    //goback *= 0xFF - ref[i] * 100;
+                    //printf("Going to %d\n", goback_ret);
+                    rmx_parse_opcode(&ref[(i - goback_ret) + 1], 0xcb);
+                    //printf("Done parsing\n");
+                }
+                else{
+                    
+                    goback_ret = ref[i];
+                    i++;
                 //goback *= 0xFF - ref[i] * 100;
-                //printf("Going back to %d\n", i - goback_ret);
-                rmx_parse_opcode(&ref[(i - goback_ret) + 1], 0xcb);
+                //printf("Going to %d\n", goback_ret);
+                rmx_parse_opcode_from(ref, 0xcb, (i + goback_ret) + 1);
                 //printf("Done parsing\n");
+                }
+                
 
             break;
 
@@ -105,7 +134,7 @@ void rmx_parse_opcode(unsigned char* ref, unsigned char term){
 
                     /* For now, don't loop infinately */
                     if(ref[i] == 0xFE){
-                        return;
+                        return RMX_STOP_CODE;
                     }
 
                     /* We need to add 1 to the end here because i will be incremented by 1 
@@ -125,18 +154,44 @@ void rmx_parse_opcode(unsigned char* ref, unsigned char term){
                 switch(cmpreg){
                     case 1:
                         if(cmpval == al){
-                            i += ref[i];
+                            if(ref[i] >= 0xFF / 2){
+                            
+                                i -= ((0xFF - ref[i]) + 1);
+                            }
+                            else{
+                                i += ref[i];
+                            }
+                        }
+                    break;
+                    case 2:
+                        if(cmpval == bl){
+                            if(ref[i] >= 0xFF / 2){
+                                i -= ((0xFF - ref[i]) + 1);
+                            }
+                            else{
+                                i += ref[i];
+                            }
                         }
                     break;
 
                     case 0x4:
                         if(cmpval == dl){
-                            i += ref[i];
+                            if(ref[i] >= 0xFF / 2){
+                                i -= ((0xFF - ref[i]) + 1);
+                            }
+                            else{
+                                i += ref[i];
+                            }
                         }
                     break;
                     case 0x8:
                         if(cmpval == dh){
-                            i += ref[i];
+                            if(ref[i] >= 0xFF / 2){
+                                i -= ((0xFF - ref[i]) + 1);
+                            }
+                            else{
+                                i += ref[i];
+                            }
                         }
                 }
             break;
@@ -145,10 +200,29 @@ void rmx_parse_opcode(unsigned char* ref, unsigned char term){
                 i++;
                 switch(cmpreg){
                     case 1:
+                        //printf("CMP: %d != %d: ", cmpval, al);
                         if(cmpval != al){
-                            i += ref[i];
+                            //printf("TRUE\n");
+                            if(ref[i] >= 0xFF / 2){
+                                i -= ((0xFF - ref[i]) + 1);
+                            }
+                            else{
+                                i += ref[i];
+                            }
+                        }
+                        else{
+                            //printf("FALSE\n");
                         }
                     break;
+                    case 2:
+                        if(cmpval != bl){
+                            if(ref[i] >= 0xFF / 2){
+                                i -= ((0xFF - ref[i]) + 1);
+                            }
+                            else{
+                                i += ref[i];
+                            }
+                        }
                 }
             break;
 
@@ -160,10 +234,26 @@ void rmx_parse_opcode(unsigned char* ref, unsigned char term){
                         cmpreg = 4; /*dl*/
                         cmpval = ref[i];
                     break;
+                    case 0xfb:
+                        i++;
+                        cmpreg = 2; /*bl*/
+                        cmpval = ref[i];
+                    break;
                     case 0xfe:
                         i++;
                         cmpreg = 8; /*dh*/
                         cmpval = ref[i];
+                }
+            break;
+
+            case 0x38:
+                i++;
+                switch(ref[i]){
+                    case 0xd8:
+                        cmpreg = 1;
+                        //printf("SETTING CMPVA TO %d, \n", bl);
+                        cmpval = bl;
+                    break;
                 }
             break;
 
@@ -209,6 +299,8 @@ void rmx_parse_opcode(unsigned char* ref, unsigned char term){
                 i++;
                 switch(ref[i]){
                     case 0x04:
+                        
+                        //printf("Setting AL equal to %x\n", ref[si]);
                         al = ref[si];
                     break;
 
@@ -225,6 +317,12 @@ void rmx_parse_opcode(unsigned char* ref, unsigned char term){
 
                         al = mem[bp - goback_bp_al];
                     break;
+
+                    case 0x1d:
+                        //printf("Setting BL equal to %x\n", ref[di]);
+                        bl = ref[di];
+                    break;
+                
                 }
             break;
 
@@ -248,6 +346,9 @@ void rmx_parse_opcode(unsigned char* ref, unsigned char term){
                         byte_t goback = 0xFF - ref[i] + 1;
                         mem[bp - goback] = al;
                     break;
+                    case 0x05:
+                        ref[di] = al;
+                    break;
                 }
 
             break;   
@@ -267,6 +368,9 @@ void rmx_parse_opcode(unsigned char* ref, unsigned char term){
                      ***/
                     case 0xe5:
                         bp = sp;
+                    break;
+                    case 0xfe:
+                        si = di;
                     break;
                     default:
                         rmx_error("UNKNOWN_MOV", ref[i]); 
@@ -346,6 +450,26 @@ void rmx_parse_opcode(unsigned char* ref, unsigned char term){
                 i++;
                 dh = ref[i];
             break;
+
+            case 0xbe:
+                i++;
+                byte_t seg = ref[i];
+                i++;
+                byte_t off = ref[i];
+                
+                //printf("SI set to 0x%2x\t0x%2x\n", seg, ref[seg]);
+                si = seg;
+            break;
+
+            case 0xbf:
+                i++;
+                byte_t seg_di = ref[i];
+                i++;
+                byte_t off_di = ref[i];
+                
+                //printf("SI set to 0x%2x\t0x%2x\n", seg, ref[seg]);
+                di = seg_di;
+            break;
             
             /***
              * Opcode:      0xcd
@@ -365,6 +489,9 @@ void rmx_parse_opcode(unsigned char* ref, unsigned char term){
                     case 0xc2:
                         dl++;
                     break;
+                    case 0xc6:
+                        dh++;
+                    break;
                 }
             break;
 
@@ -376,7 +503,24 @@ void rmx_parse_opcode(unsigned char* ref, unsigned char term){
             return;
 #endif //_RMX_PARSER_NO_STOP
         }
-    }
-    return;
+    return i;
 }
 
+void rmx_parse_opcode(unsigned char* ref, unsigned char term){
+    printf("%x", ref[0]);
+    for(unsigned int i = 0; ref[i] != term; i++){
+        i = rmx_parse_opcode_single(ref, i);
+        if(i == RMX_STOP_CODE){
+            break;
+        }
+    }
+}
+
+void rmx_parse_opcode_from(unsigned char* ref, unsigned char term, unsigned int i){
+    for(; ref[i] != term; i++){
+        i = rmx_parse_opcode_single(ref, i);
+        if(i == RMX_STOP_CODE){
+            break;
+        }
+    }
+}
